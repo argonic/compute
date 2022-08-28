@@ -47,7 +47,7 @@ export declare type Vector<C extends number> = C extends 1 ? {
     i2: number;
     i3: number;
 };
-declare type IMethodName<T extends string, A extends AccessType> = A extends "value" ? `$${T}` : A extends "coords" ? `$${T}_coords` : A extends "index_access" ? `$$${T}_index` : A extends "coords_access" ? `$$${T}_access` : A extends "index_to_coords" ? `$$$${T}_coords` : A extends "coords_to_index" ? `$$$${T}_index` : never;
+declare type IMethodName<T extends string, A extends AccessType> = A extends "value" ? `$${T}` : A extends "coords" ? `$${T}_coords` : A extends "index_access" ? `$$${T}_index` : A extends "coords_access" ? `$$${T}_coords` : A extends "index_to_coords" ? `$$$${T}_coords` : A extends "coords_to_index" ? `$$$${T}_index` : never;
 declare type IMethodValue<A extends AccessType, C extends number> = A extends "value" ? number : A extends "coords" ? Vector<C> : A extends "index_access" ? (index: number) => number : A extends "coords_access" ? (vector: Vector<C>) => number : A extends "index_to_coords" ? (vector: number) => Vector<C> : A extends "coords_to_index" ? (vector: Vector<C>) => number : never;
 declare type IMethods<T extends string = string, C extends number = number> = {
     [P in AccessType as IMethodName<T, P>]: IMethodValue<P, C>;

@@ -30,7 +30,7 @@ export type Vector<C extends number> = C extends 1 ? { x: number }
 type IMethodName<T extends string, A extends AccessType> = A extends "value" ? `$${T}`
   : A extends "coords" ? `$${T}_coords`
   : A extends "index_access" ? `$$${T}_index`
-  : A extends "coords_access" ? `$$${T}_access`
+  : A extends "coords_access" ? `$$${T}_coords`
   : A extends "index_to_coords" ? `$$$${T}_coords`
   : A extends "coords_to_index" ? `$$$${T}_index`
   : never;

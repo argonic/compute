@@ -81,7 +81,7 @@ export default class Compute {
         height: number;
         strides: number[];
     };
-    code: string;
+    private code;
     private context;
     private program;
     private vertex;
@@ -91,22 +91,23 @@ export default class Compute {
     private values;
     private result;
     output(type: TypedArray | TypedArrayConstructor, ...shape: number[]): this;
-    shape(name: string, type: TypedArray | TypedArrayConstructor, ...shape: number[]): this;
-    fallback<T extends {
+    input(name: string, type: TypedArray | TypedArrayConstructor, ...shape: number[]): this;
+    cpu<T extends {
         readonly [s: string]: number;
     } = {}>(closure: (map: IMethodsMap<T> & {
         thread: number;
     }) => number): this;
-    compute(code: string): this;
+    gpu(code: string): this;
     inputs(inputs: {
         [s: string]: TypedArray;
     }): this;
-    run({ runtime, threshold, }?: {
+    run({ runtime, threshold, safe, }?: {
         runtime?: "gpu" | "cpu" | "fallback" | "fastest";
         threshold?: number;
-    }): any;
-    gpu(): any;
-    cpu(): Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array;
+        safe?: boolean;
+    }): TypedArray;
+    private run_gpu;
+    private run_cpu;
     private compile;
     private closure;
     private parse;

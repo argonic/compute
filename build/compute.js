@@ -368,7 +368,7 @@ var Compute = (function () {
         this.result = Compute.tensor(type, shape);
         return this;
     };
-    Compute.prototype.shape = function (name, type) {
+    Compute.prototype.input = function (name, type) {
         var shape = [];
         for (var _i = 2; _i < arguments.length; _i++) {
             shape[_i - 2] = arguments[_i];
@@ -376,11 +376,11 @@ var Compute = (function () {
         this.shapes[name] = Compute.tensor(type, shape);
         return this;
     };
-    Compute.prototype.fallback = function (closure) {
+    Compute.prototype.cpu = function (closure) {
         this.closure = closure;
         return this;
     };
-    Compute.prototype.compute = function (code) {
+    Compute.prototype.gpu = function (code) {
         this.code = this.parse(code);
         return this;
     };
@@ -390,40 +390,48 @@ var Compute = (function () {
     };
     Compute.prototype.run = function (_a) {
         var _this = this;
-        var _b = _a === void 0 ? {} : _a, _c = _b.runtime, runtime = _c === void 0 ? "fastest" : _c, _d = _b.threshold, threshold = _d === void 0 ? 4096 : _d;
-        if (runtime === "gpu") {
-            return this.gpu();
-        }
-        if (runtime === "cpu") {
-            return this.cpu();
-        }
-        if (runtime === "fallback") {
+        var _b = _a === void 0 ? {} : _a, _c = _b.runtime, runtime = _c === void 0 ? "fastest" : _c, _d = _b.threshold, threshold = _d === void 0 ? 4096 : _d, _e = _b.safe, safe = _e === void 0 ? true : _e;
+        try {
+            if (runtime === "gpu") {
+                return this.run_gpu();
+            }
+            if (runtime === "cpu") {
+                return this.run_cpu();
+            }
+            if (runtime === "fallback") {
+                try {
+                    return this.run_gpu();
+                }
+                catch (e) {
+                    return this.run_cpu();
+                }
+            }
+            var T_1 = threshold || 4096;
+            var fastest_1 = "cpu";
+            Object.keys(this.shapes).forEach(function (name) {
+                var shape = _this.shapes[name];
+                if (shape.length * shape.bytes > T_1) {
+                    fastest_1 = "gpu";
+                }
+            });
+            if (this.result.length * this.result.bytes > T_1) {
+                fastest_1 = "gpu";
+            }
             try {
-                return this.gpu();
+                return this["run_" + fastest_1]();
             }
             catch (e) {
-                return this.cpu();
+                return this["run_" + (fastest_1 === "gpu" ? "cpu" : "gpu")]();
             }
-        }
-        var T = threshold || 4096;
-        var fastest = "cpu";
-        Object.keys(this.shapes).forEach(function (name) {
-            var shape = _this.shapes[name];
-            if (shape.length * shape.bytes > T) {
-                fastest = "gpu";
-            }
-        });
-        if (this.result.length * this.result.bytes > T) {
-            fastest = "gpu";
-        }
-        try {
-            return this[fastest]();
         }
         catch (e) {
-            return this[fastest === "gpu" ? "cpu" : "gpu"]();
+            if (safe !== false) {
+                return new this.result.constructor(this.result.length);
+            }
+            throw e;
         }
     };
-    Compute.prototype.gpu = function () {
+    Compute.prototype.run_gpu = function () {
         var _this = this;
         var context = this.context;
         var program = this.program;
@@ -445,7 +453,7 @@ var Compute = (function () {
         }
         return new this.result.constructor(this.result.shape.reduce(function (p, c) { return p * c; }, 1));
     };
-    Compute.prototype.cpu = function () {
+    Compute.prototype.run_cpu = function () {
         var _this = this;
         var threads = this.result.length;
         var array = new this.result.constructor(threads);

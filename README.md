@@ -104,12 +104,12 @@ const input = new Uint8Array(5 * 3 * 2).map((_, i) =>
 );
 const backend = new Backend();
 const result = backend
-    .shape("input", Uint8Array, 5, 3, 2)
+    .input("input", Uint8Array, 5, 3, 2)
     .output(Float32Array, 5, 3, 2)
-    .fallback<{ readonly input: 3 }>(({ $input }) => {
+    .cpu<{ readonly input: 3 }>(({ $input }) => {
     return $input;
     })
-    .compute(`return float($input);`)
+    .gpu(`return float($input);`)
     .inputs({ input })
     .run(); // would return a Float32Array with the same values from input
 ```
@@ -124,9 +124,9 @@ const result = backend
 | $$$NAME_index | coordinates to index helper | `(coords) => Int` |
 | $$$NAME_coords | index to coordinates helper | `(index) => Vector` |
 ### Methods
-#### `Backend.prototype.shape`
+#### `Backend.prototype.input`
 ____
-###### `Backend.prototype.shape(name: string, type: TypedArray | TypedArrayConstructor, ...shape: number[]): Backend;`
+##### `Backend.prototype.input(name: string, type: TypedArray | TypedArrayConstructor, ...shape: number[]): Backend;`
 Defines a input named `input` with a type `TypedArrayConstructor` with a shape of `shape`
 
 * `name`: input name must be a compatible GLSL variable name.
@@ -137,7 +137,7 @@ Defines a input named `input` with a type `TypedArrayConstructor` with a shape o
 
 #### `Backend.prototype.output`
 ____
-###### `Backend.prototype.output(type: TypedArray | TypedArrayConstructor, ...shape: number[]): Backend;`
+##### `Backend.prototype.output(type: TypedArray | TypedArrayConstructor, ...shape: number[]): Backend;`
 Defines the output a type `TypedArrayConstructor` with a shape of `shape`
 
 * `type`: a typed array or a typed array constructor.
@@ -145,30 +145,8 @@ Defines the output a type `TypedArrayConstructor` with a shape of `shape`
 
 `return`: *this* object.
 
-#### `Backend.prototype.compute`
 ____
-###### `Backend.prototype.compute(syntax: string): Backend;`
-Defines the GLSL compute shader of the current thread
-
-This shader must return a `float` if you were expecting a Float32Array output and must return an `int` value if otherwise.
-
-* `syntax`: the compute shader syntax, interpolates *that starts with a dollar sign will be replaced automatically*
-
-`return`: *this* object.
-#### `Backend.prototype.compute`
-
-____
-###### `Backend.prototype.compute(syntax: string): Backend;`
-Defines the GLSL compute shader of the current thread
-
-This shader must return a `float` if you were expecting a Float32Array output and must return an `int` value if otherwise.
-
-* `syntax`: the compute shader syntax, interpolates *that starts with a dollar sign will be replaced automatically*
-
-`return`: *this* object.
-
-____
-###### `Backend.prototype.inputs(inputs: {[s: string]: TypedArray}): Backend;`
+##### `Backend.prototype.inputs(inputs: {[s: string]: TypedArray}): Backend;`
 Supply the inputs map of `TypedArray`s
 
 The keys of this map must match all expected inputs
@@ -177,8 +155,31 @@ The keys of this map must match all expected inputs
 
 `return`: *this* object.
 
+
+#### `Backend.prototype.gpu`
 ____
-###### `Backend.prototype.run({runtime = "fastest", threshold = 4096 : { runtime?: "gpu" | "cpu" | "fallback" | "fastest"; threshold?: number; } = {}): TypedArray;`
+##### `Backend.prototype.gpu(syntax: string): Backend;`
+Defines the CPU compute shader of the current thread
+
+This shader must return a `float` if you were expecting a Float32Array output and must return an `int` value if otherwise.
+
+* `syntax`: the compute shader syntax, interpolates *that starts with a dollar sign will be replaced automatically*
+
+`return`: *this* object.
+
+
+#### `Backend.prototype.cpu`
+____
+##### `Backend.prototype.cpu<T extends {[s: string]: number} = {}>(closure: (map: IMethodsMap<T> & {thread: number}) => number): Backend;`
+Defines the CPU compute closure of the current thread
+
+
+* `map`: this object supplies the current thread in addition to the current input interpolate values
+
+`return`: *this* object.
+
+____
+##### `Backend.prototype.run({runtime = "fastest", threshold = 4096 : { runtime?: "gpu" | "cpu" | "fallback" | "fastest"; threshold?: number; } = {}): TypedArray;`
 Execute the compute kernel and returns a TypedArray
 
 * `runtime`: execution runtime
@@ -193,24 +194,6 @@ Execute the compute kernel and returns a TypedArray
 
 `return`: TypedArray.
 
-____
-###### `Backend.prototype.gpu(): TypedArray;`
-Execute the compute kernel on the GPU exclusively and returns a TypedArray
-
-`return`: TypedArray.
-
-____
-###### `Backend.prototype.cpu(): TypedArray;`
-Execute the compute kernel on the CPU exclusively and returns a TypedArray
-
-`return`: TypedArray.
-
-
-```typescript
-const tensor = new Tensor(Float64Array, 10)
-tensor.fill(0); // fill with zeros
-tensor.fill(Math.random); // fill with random values
-```
 ### Tensor metadata
 A call with `Compute.tensor(type: Float32, [2, 3, 5])` would compute the following values :
 1. `rank`: number of dimensions
@@ -241,23 +224,21 @@ type TensorMetadata = {
 };
 export default class Compute {
     static tensor(type: TypedArray | TypedArrayConstructor, shape: number[]): TensorMetadata;
+    input(name: string, type: TypedArray | TypedArrayConstructor, ...shape: number[]): this;
     output(type: TypedArray | TypedArrayConstructor, ...shape: number[]): this;
-    shape(name: string, type: TypedArray | TypedArrayConstructor, ...shape: number[]): this;
-    fallback<T extends {
+    inputs(inputs: {
+        [s: string]: TypedArray;
+    }): this;
+    cpu<T extends {
         readonly [s: string]: number;
     } = {}>(closure: (map: IMethodsMap<T> & {
         thread: number;
     }) => number): this;
-    compute(code: string): this;
-    inputs(inputs: {
-        [s: string]: TypedArray;
-    }): this;
-    run({ runtime, threshold, }?: {
+    gpu(code: string): this;
+    run({ runtime, threshold}?: {
         runtime?: "gpu" | "cpu" | "fallback" | "fastest";
         threshold?: number;
-    }): any;
-    gpu(): TypedArray;
-    cpu(): TypedArray;
+    }): TypedArray;
 }
 ```
 

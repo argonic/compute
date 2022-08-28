@@ -560,7 +560,7 @@ export default class Compute {
       strides,
     };
   }
-  public code = `return float(thread);`;
+  private code = `return float(thread);`;
   private context: WebGLRenderingContext | null = null;
   private program: WebGLProgram | null = null;
   private vertex: WebGLShader | null = null;
@@ -591,7 +591,7 @@ export default class Compute {
     this.result = Compute.tensor(type, shape);
     return this;
   }
-  public shape(
+  public input(
     name: string,
     type: TypedArray | TypedArrayConstructor,
     ...shape: number[]
@@ -599,14 +599,14 @@ export default class Compute {
     this.shapes[name] = Compute.tensor(type, shape);
     return this;
   }
-  public fallback<T extends { readonly [s: string]: number } = {}>(
+  public cpu<T extends { readonly [s: string]: number } = {}>(
     closure: (map: IMethodsMap<T> & { thread: number }) => number,
   ) {
     // @ts-ignore
     this.closure = closure;
     return this;
   }
-  public compute(code: string) {
+  public gpu(code: string) {
     this.code = this.parse(code);
     return this;
   }
@@ -617,41 +617,50 @@ export default class Compute {
   public run({
     runtime = "fastest",
     threshold = 4096,
+    safe = true,
   }: {
     runtime?: "gpu" | "cpu" | "fallback" | "fastest";
     threshold?: number;
-  } = {}) {
-    if (runtime === "gpu") {
-      return this.gpu();
-    }
-    if (runtime === "cpu") {
-      return this.cpu();
-    }
-    if (runtime === "fallback") {
-      try {
-        return this.gpu();
-      } catch (e) {
-        return this.cpu();
+    safe?: boolean;
+  } = {}): TypedArray {
+    try {
+      if (runtime === "gpu") {
+        return this.run_gpu();
       }
-    }
-    const T = threshold || 4096;
-    let fastest: "cpu" | "gpu" = "cpu";
-    Object.keys(this.shapes).forEach((name) => {
-      const shape = this.shapes[name];
-      if (shape.length * shape.bytes > T) {
+      if (runtime === "cpu") {
+        return this.run_cpu();
+      }
+      if (runtime === "fallback") {
+        try {
+          return this.run_gpu();
+        } catch (e) {
+          return this.run_cpu();
+        }
+      }
+      const T = threshold || 4096;
+      let fastest: "cpu" | "gpu" = "cpu";
+      Object.keys(this.shapes).forEach((name) => {
+        const shape = this.shapes[name];
+        if (shape.length * shape.bytes > T) {
+          fastest = "gpu";
+        }
+      });
+      if (this.result.length * this.result.bytes > T) {
         fastest = "gpu";
       }
-    });
-    if (this.result.length * this.result.bytes > T) {
-      fastest = "gpu";
-    }
-    try {
-      return this[fastest]();
+      try {
+        return this["run_" + fastest]();
+      } catch (e) {
+        return this["run_" + (fastest === "gpu" ? "cpu" : "gpu")]();
+      }
     } catch (e) {
-      return this[fastest === "gpu" ? "cpu" : "gpu"]();
+      if (safe !== false) {
+        return new this.result.constructor(this.result.length);
+      }
+      throw e;
     }
   }
-  public gpu() {
+  private run_gpu() {
     const context = this.context;
     const program = this.program;
     const vertex = this.vertex;
@@ -685,7 +694,7 @@ export default class Compute {
       this.result.shape.reduce((p, c) => p * c, 1),
     );
   }
-  public cpu() {
+  private run_cpu() {
     const threads = this.result.length;
     const array = new this.result.constructor(threads);
     return array.map((_, i) => {

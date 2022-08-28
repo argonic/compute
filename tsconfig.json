@@ -2,18 +2,20 @@
   "compileOnSave": true,
   "compilerOptions": {
     "target": "es5",
-    "module": "commonjs",
+    "module": "AMD",
     "outDir": "build",
     "declaration": true,
     "sourceMap": true,
     "allowJs": false,
     "checkJs": false,
     "strict": true,
-    "pretty": true,
-    "noImplicitAny": true,
+    "pretty": false,
+    "removeComments": true,
+    "noImplicitAny": false,
+    "outFile": "build/compute.js"
   },
-  "include": [
-    "src/**/*.ts", "test/compute.test.ts"
+  "files": [
+    "src/compute.ts"
   ],
   "exclude": [
     "node_modules"

@@ -13,7 +13,7 @@ module.exports = {
     module: {
         rules: [
             {
-                test: /\.tsx?$/,
+                test: require.resolve("./src/compute.ts"),
                 use: [
                     {
                         loader: 'expose-loader',
@@ -21,9 +21,17 @@ module.exports = {
                     },
                     {
                         loader: 'ts-loader'
-                    }
+                    },
                 ]
-            }
+            },
+            {
+                test: /\.tsx?$/,
+                use: [
+                    {
+                        loader: 'ts-loader'
+                    },
+                ]
+            },
         ]
     }
 }

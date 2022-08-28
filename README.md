@@ -74,7 +74,7 @@ instance.output(Uint8Array, 2, 5, 3); // this defines the output tensor with a s
 ```
 Define the CPU fallback compute function
 ```typescript
-instance.fallback<{ readonly input: 3 }>(({ $input }) => {
+instance.fallback<{ input: 3 }>(({ $input }) => {
     return $input;
 });
 ```
@@ -106,7 +106,7 @@ const backend = new Backend();
 const result = backend
     .input("input", Uint8Array, 5, 3, 2)
     .output(Float32Array, 5, 3, 2)
-    .cpu<{ readonly input: 3 }>(({ $input }) => {
+    .cpu<{ input: 3 }>(({ $input }) => {
     return $input;
     })
     .gpu(`return float($input);`)
@@ -229,9 +229,7 @@ export default class Compute {
     inputs(inputs: {
         [s: string]: TypedArray;
     }): this;
-    cpu<T extends {
-        readonly [s: string]: number;
-    } = {}>(closure: (map: IMethodsMap<T> & {
+    cpu<T extends {[s: string]: number} = {}>(closure: (map: IMethodsMap<T> & {
         thread: number;
     }) => number): this;
     gpu(code: string): this;

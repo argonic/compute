@@ -61,7 +61,7 @@ declare type Flatten<T> = {
     [P in FlattenPairs<T> as P[0]]: P[1];
 };
 declare type IMethodsMap<T extends {
-    readonly [s: string]: number;
+    [s: string]: number;
 }> = Flatten<{
     [P in keyof T]: IMethods<P, T[P]>;
 }>;
@@ -93,7 +93,7 @@ export default class Compute {
     output(type: TypedArray | TypedArrayConstructor, ...shape: number[]): this;
     input(name: string, type: TypedArray | TypedArrayConstructor, ...shape: number[]): this;
     cpu<T extends {
-        readonly [s: string]: number;
+        [s: string]: number;
     } = {}>(closure: (map: IMethodsMap<T> & {
         thread: number;
     }) => number): this;

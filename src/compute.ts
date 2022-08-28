@@ -54,7 +54,7 @@ type FlattenPairs<T> = { [K in keyof T]: T[K] extends Primitive ? [K, T[K]]
 // @ts-ignore
 type Flatten<T> = { [P in FlattenPairs<T> as P[0]]: P[1] };
 
-type IMethodsMap<T extends { readonly [s: string]: number }> = Flatten<{
+type IMethodsMap<T extends { [s: string]: number }> = Flatten<{
   // @ts-ignore
   [P in keyof T]: IMethods<P, T[P]>;
 }>;
@@ -599,7 +599,7 @@ export default class Compute {
     this.shapes[name] = Compute.tensor(type, shape);
     return this;
   }
-  public cpu<T extends { readonly [s: string]: number } = {}>(
+  public cpu<T extends { [s: string]: number } = {}>(
     closure: (map: IMethodsMap<T> & { thread: number }) => number,
   ) {
     // @ts-ignore
@@ -698,7 +698,7 @@ export default class Compute {
     const threads = this.result.length;
     const array = new this.result.constructor(threads);
     return array.map((_, i) => {
-      let map: IMethodsMap<{ readonly [s: string]: number }> & { thread: number } = { thread: i };
+      let map: IMethodsMap<{ [s: string]: number }> & { thread: number } = { thread: i };
       Object.keys(this.shapes).forEach((name) => {
         // @ts-ignore
         map = { ...map, ...tensorMethods(name, this.values[name], this.shapes[name], i) };
@@ -973,7 +973,7 @@ export default class Compute {
     });
     return this;
   }
-  private closure: <T extends { readonly [s: string]: number } = {}>(
+  private closure: <T extends { [s: string]: number } = {}>(
     map: IMethodsMap<T> & { thread: number },
     // tslint:disable-next-line
   ) => number = () => 0;

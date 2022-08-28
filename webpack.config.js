@@ -1,11 +1,11 @@
 module.exports = {
     mode: 'development',
     devtool: 'inline-source-map',
-    entry: './src/tensor.ts',
+    entry: './src/compute.ts',
     watch: true,
     output: {
         path: __dirname ,
-        filename: 'build/tensor.js'
+        filename: 'build/compute.js'
     },
     resolve: {
         extensions: ['.ts', '.tsx', '.js']
@@ -17,7 +17,7 @@ module.exports = {
                 use: [
                     {
                         loader: 'expose-loader',
-                        options: 'Tensor'
+                        options: 'Compute'
                     },
                     {
                         loader: 'ts-loader'

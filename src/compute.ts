@@ -18,16 +18,16 @@ export type TypedArrayConstructor =
 
 type AccessType = "value" | "coords" | "index_access" | "coords_access" | "index_to_coords" | "coords_to_index";
 
-export type Vector<C extends number> = C extends 1 ? {x: number}
-  : C extends 2 ? {x: number, y: number}
-  : C extends 3 ? {x: number, y: number, z: number}
-  : C extends 4 ? {x: number, y: number, z: number, w: number}
-  : C extends 5 ? {x: number, y: number, z: number, w: number, i: number}
-  : C extends 6 ? {x: number, y: number, z: number, w: number, i: number, i1: number}
-  : C extends 7 ? {x: number, y: number, z: number, w: number, i: number, i1: number, i2: number, i3: number}
-  : {x: number, y: number, z: number, w: number, i: number, i1: number, i2: number, i3: number};
+export type Vector<C extends number> = C extends 1 ? { x: number }
+  : C extends 2 ? { x: number, y: number }
+  : C extends 3 ? { x: number, y: number, z: number }
+  : C extends 4 ? { x: number, y: number, z: number, w: number }
+  : C extends 5 ? { x: number, y: number, z: number, w: number, i: number }
+  : C extends 6 ? { x: number, y: number, z: number, w: number, i: number, i1: number }
+  : C extends 7 ? { x: number, y: number, z: number, w: number, i: number, i1: number, i2: number, i3: number }
+  : { x: number, y: number, z: number, w: number, i: number, i1: number, i2: number, i3: number };
 
-  type IMethodName<T extends string, A extends AccessType> = A extends "value" ? `$${T}`
+type IMethodName<T extends string, A extends AccessType> = A extends "value" ? `$${T}`
   : A extends "coords" ? `$${T}_coords`
   : A extends "index_access" ? `$$${T}_index`
   : A extends "coords_access" ? `$$${T}_access`
@@ -47,12 +47,14 @@ type IMethods<T extends string = string, C extends number = number> = {
   [P in AccessType as IMethodName<T, P>]: IMethodValue<P, C>;
 };
 type V = Vector<1> | Vector<2> | Vector<3> | Vector<4> | Vector<5> | Vector<6> | Vector<7> | Vector<number>;
+// tslint:disable-next-line: ban-types
 type Primitive = number | Function | V;
-type FlattenPairs<T> = {[K in keyof T]: T[K] extends Primitive ? [K, T[K]] : FlattenPairs<T[K]>}[keyof T] & [PropertyKey, Primitive];
+type FlattenPairs<T> = { [K in keyof T]: T[K] extends Primitive ? [K, T[K]]
+  : FlattenPairs<T[K]> }[keyof T] & [PropertyKey, Primitive];
 // @ts-ignore
-type Flatten<T> = {[P in FlattenPairs<T> as P[0]]: P[1]};
+type Flatten<T> = { [P in FlattenPairs<T> as P[0]]: P[1] };
 
-type IMethodsMap<T extends {readonly [s: string]: number}> = Flatten<{
+type IMethodsMap<T extends { readonly [s: string]: number }> = Flatten<{
   // @ts-ignore
   [P in keyof T]: IMethods<P, T[P]>;
 }>;
@@ -71,11 +73,13 @@ function rightPad(a: string, size: number): string {
 const lineNumberRegex = /ERROR: [0-9]+:([0-9]+):/g;
 export function logShaderSourceAndInfoLog(
   shaderSource: string,
-  shaderInfoLog: string
+  shaderInfoLog: string,
 ) {
   const lineNumberRegexResult = lineNumberRegex.exec(shaderInfoLog);
   if (lineNumberRegexResult == null) {
+    // tslint:disable-next-line: no-console
     console.log(`Couldn't parse line number in error: ${shaderInfoLog}`);
+    // tslint:disable-next-line: no-console
     console.log(shaderSource);
     return;
   }
@@ -85,9 +89,10 @@ export function logShaderSourceAndInfoLog(
   const shaderLines = shaderSource.split("\n");
   const pad = shaderLines.length.toString().length + 2;
   const linesWithLineNumbers = shaderLines.map(
-    (line, lineNumber) => rightPad((lineNumber + 1).toString(), pad) + line
+    (line, LN) => rightPad((LN + 1).toString(), pad) + line,
   );
   let maxLineLength = 0;
+  // tslint:disable-next-line
   for (let i = 0; i < linesWithLineNumbers.length; i++) {
     maxLineLength = Math.max(linesWithLineNumbers[i].length, maxLineLength);
   }
@@ -96,22 +101,26 @@ export function logShaderSourceAndInfoLog(
   const errorLine = linesWithLineNumbers.slice(lineNumber - 1, lineNumber);
   const afterErrorLines = linesWithLineNumbers.slice(lineNumber);
 
+  // tslint:disable-next-line: no-console
   console.log(beforeErrorLines.join("\n"));
+  // tslint:disable-next-line: no-console
   console.log(shaderInfoLog.split("\n")[0]);
+  // tslint:disable-next-line: no-console
   console.log(
     `%c ${rightPad(errorLine[0], maxLineLength)}`,
-    "border:1px solid red; background-color:#e3d2d2; color:#a61717"
+    "border:1px solid red; background-color:#e3d2d2; color:#a61717",
   );
+  // tslint:disable-next-line: no-console
   console.log(afterErrorLines.join("\n"));
 }
 
 function createShader(
   gl: WebGLRenderingContext,
   type: "vertex" | "fragment",
-  source: string
+  source: string,
 ) {
   const shader = gl.createShader(
-    type === "vertex" ? gl.VERTEX_SHADER : gl.FRAGMENT_SHADER
+    type === "vertex" ? gl.VERTEX_SHADER : gl.FRAGMENT_SHADER,
   );
   if (shader === null) {
     return null;
@@ -130,7 +139,7 @@ function createShader(
 function createProgram(
   gl: WebGLRenderingContext,
   vertexShader: WebGLShader,
-  fragmentShader: WebGLShader
+  fragmentShader: WebGLShader,
 ) {
   const program = gl.createProgram();
   if (program === null) {
@@ -143,7 +152,7 @@ function createProgram(
   if (success) {
     return program;
   }
-
+  // tslint:disable-next-line: no-console
   console.log(gl.getProgramInfoLog(program));
   gl.deleteProgram(program);
   return null;
@@ -156,7 +165,7 @@ function initializeContext() {
 function bindProgram(
   gl: WebGLRenderingContext,
   program: WebGLProgram,
-  output: TensorMetadata
+  output: TensorMetadata,
 ) {
   const width = (output.width * 4) / output.bytes;
   const height = (output.height * 4) / output.bytes;
@@ -166,7 +175,7 @@ function bindProgram(
   const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
   const resolutionUniformLocation = gl.getUniformLocation(
     program,
-    "u_resolution"
+    "u_resolution",
   );
   const littleEndianLocation = gl.getUniformLocation(program, "littleEndian");
   gl.viewport(0, 0, width, height);
@@ -189,7 +198,7 @@ function readContext(gl: WebGLRenderingContext) {
     gl.drawingBufferHeight,
     gl.RGBA,
     gl.UNSIGNED_BYTE,
-    pixels
+    pixels,
   );
   return pixels;
 }
@@ -212,7 +221,7 @@ function generateStructs(count: number) {
         .map((__, ii) => {
           return "int " + getCoord(ii);
         })
-        .join("; ")};}`
+        .join("; ")};}`,
     );
   });
   return structs;
@@ -232,6 +241,7 @@ function convertPixels(pixels: Uint8Array, type: TensorMetadata) {
     return new type.constructor(type.length).map((value, i) => {
       const a = pixels[i * 4 + 3];
       const b = pixels[i * 4 + 2];
+      // tslint:disable-next-line
       return a + (b << 8);
     });
   }
@@ -242,6 +252,7 @@ function convertPixels(pixels: Uint8Array, type: TensorMetadata) {
       const b = pixels[i * 4 + 2];
       const g = pixels[i * 4 + 1];
       const r = pixels[i * 4];
+      // tslint:disable-next-line
       return a + (b << 8) + (g << 16) + (r << 16);
     });
   }
@@ -251,7 +262,7 @@ function initializeShape(
   gl: WebGLRenderingContext,
   program: WebGLProgram,
   name: string,
-  output: TensorMetadata
+  output: TensorMetadata,
 ) {
   const widthLocation = gl.getUniformLocation(program, `u_${name}_width`);
   const heightLocation = gl.getUniformLocation(program, `u_${name}_height`);
@@ -260,11 +271,11 @@ function initializeShape(
   output.shape.forEach((v, i) => {
     const dimLocation = gl.getUniformLocation(
       program,
-      `u_${name}_shape.${getCoord(i)}`
+      `u_${name}_shape.${getCoord(i)}`,
     );
     const strideLocation = gl.getUniformLocation(
       program,
-      `u_${name}_strides.${getCoord(i)}`
+      `u_${name}_strides.${getCoord(i)}`,
     );
     gl.uniform1i(dimLocation, v);
     gl.uniform1i(strideLocation, output.strides[i]);
@@ -275,7 +286,7 @@ function initializeTexture(
   program: WebGLProgram,
   name: string,
   output: TensorMetadata,
-  index: number
+  index: number,
 ) {
   initializeShape(gl, program, name, output);
   const location = gl.getUniformLocation(program, `u_${name}`);
@@ -298,7 +309,7 @@ function initializeTexture(
     0,
     gl.RGBA,
     gl.UNSIGNED_BYTE,
-    null
+    null,
   );
   gl.uniform1i(location, index);
   return texture;
@@ -308,7 +319,7 @@ function uploadTexture(
   texture: WebGLTexture,
   data: TypedArray,
   output: TensorMetadata,
-  index: number
+  index: number,
 ) {
   const length = output.width * output.height * 4;
   gl.activeTexture(gl.TEXTURE0 + index);
@@ -332,7 +343,7 @@ function uploadTexture(
     0,
     gl.RGBA,
     gl.UNSIGNED_BYTE,
-    d
+    d,
   );
 }
 function textureShader(name: string, output: TensorMetadata) {
@@ -350,15 +361,14 @@ function textureShader(name: string, output: TensorMetadata) {
       int i = int(float(index) / p);
       int z = index - int(float(i) * p);
       vec4 color = colorIndex(index, u_${name}, d, u_${name}_width, u_${name}_height);
-      return ${
-        output.shader === "float"
-          ? `rgbaToFloat(color)`
-          : output.precision === "high"
-          ? "rgbaToHighInt(color)"
-          : output.precision === "medium"
+      return ${output.shader === "float"
+      ? `rgbaToFloat(color)`
+      : output.precision === "high"
+        ? "rgbaToHighInt(color)"
+        : output.precision === "medium"
           ? "rgbaToMediumInt(color, z)"
           : `rgbaToLowInt(color, z)`
-      };
+    };
     }`);
   functions.push(`
     ${output.shader} ${name}SampleCoords(ivec${output.shape.length} coords) {
@@ -391,29 +401,25 @@ function textureShader(name: string, output: TensorMetadata) {
       return colorIndex(index, texture, d, width, height);
     }`);
   functions.push(`
-    int coordsToIndex(ivec${output.shape.length} coords, ivec${
-    output.shape.length
-  } strides) {
+    int coordsToIndex(ivec${output.shape.length} coords, ivec${output.shape.length
+    } strides) {
       if (${output.shape.length} == 1) {
         return coords.${getCoord(0)};
       }
       int index = 0;
       ${output.shape.map((_, i) => {
-        return `index += coords.${getCoord(i)} * strides.${getCoord(i)};`;
-      }).join(`
+      return `index += coords.${getCoord(i)} * strides.${getCoord(i)};`;
+    }).join(`
       `)}
       return index;
     }`);
   functions.push(`
-    ivec${output.shape.length} indexToCoords(int index, ivec${
-    output.shape.length
-  } strides) {
-      ${
-        output.shape.length === 1
-          ? `return ivec${output.shape.length}(index);`
-          : `ivec${output.shape.length} coords = ivec${
-              output.shape.length
-            }(${output.shape.map(() => "0").join(", ")});
+    ivec${output.shape.length} indexToCoords(int index, ivec${output.shape.length
+    } strides) {
+      ${output.shape.length === 1
+      ? `return ivec${output.shape.length}(index);`
+      : `ivec${output.shape.length} coords = ivec${output.shape.length
+      }(${output.shape.map(() => "0").join(", ")});
       int rest = index;
       int div = 0;
       ${output.shape.map((_: number, i: number) => {
@@ -423,7 +429,7 @@ function textureShader(name: string, output: TensorMetadata) {
       }).join(`
       `)}
       return coords;`
-      }
+    }
     }`);
   return { uniforms, functions };
 }
@@ -474,7 +480,7 @@ function tensorMethods(name: string, value: TypedArray, tensor: TensorMetadata, 
 export default class Compute {
   public static tensor(
     type: TypedArray | TypedArrayConstructor,
-    shape: number[]
+    shape: number[],
   ) {
     let C = type.constructor as any;
     if (
@@ -492,32 +498,32 @@ export default class Compute {
       constructor === Int8Array
         ? "int8"
         : constructor === Uint8Array
-        ? "uint8"
-        : constructor === Int16Array
-        ? "int16"
-        : constructor === Uint16Array
-        ? "uint16"
-        : constructor === Int32Array
-        ? "int32"
-        : constructor === Uint32Array
-        ? "uint32"
-        : ("float" as const);
+          ? "uint8"
+          : constructor === Int16Array
+            ? "int16"
+            : constructor === Uint16Array
+              ? "uint16"
+              : constructor === Int32Array
+                ? "int32"
+                : constructor === Uint32Array
+                  ? "uint32"
+                  : ("float" as const);
     const native =
       constructor === Int8Array ||
-      constructor === Int16Array ||
-      constructor === Int32Array
+        constructor === Int16Array ||
+        constructor === Int32Array
         ? "int"
         : constructor === Uint8Array ||
           constructor === Uint16Array ||
           constructor === Uint32Array
-        ? "uint"
-        : ("float" as const);
+          ? "uint"
+          : ("float" as const);
     const precision =
       constructor === Int8Array || constructor === Uint8Array
         ? "low"
         : constructor === Int16Array || constructor === Uint16Array
-        ? "medium"
-        : ("high" as const);
+          ? "medium"
+          : ("high" as const);
     const bytes = precision === "low" ? 1 : precision === "medium" ? 2 : 4;
     const shader = native === "float" ? "float" : "int";
     const length = shape.reduce((p, c) => p * c, 1);
@@ -527,9 +533,9 @@ export default class Compute {
     const strides: number[] = [];
     for (let i = shape.length - 1; i >= 0; i--) {
       let prev = strides[i + 1];
-      const length = i === shape.length - 1 ? 1 : shape[i + 1];
+      const L = i === shape.length - 1 ? 1 : shape[i + 1];
       prev = prev === undefined ? 1 : prev;
-      strides[i] = length * prev;
+      strides[i] = L * prev;
     }
     return {
       constructor,
@@ -541,6 +547,7 @@ export default class Compute {
         | "uint16"
         | "int32"
         | "uint31",
+      // tslint:disable-next-line
       native: native as "int" | "uint" | "float",
       precision: precision as "low" | "medium" | "high",
       shader: shader as "float" | "int",
@@ -550,16 +557,15 @@ export default class Compute {
       length,
       width,
       height,
-      strides
+      strides,
     };
   }
+  public code = `return float(thread);`;
   private context: WebGLRenderingContext | null = null;
   private program: WebGLProgram | null = null;
   private vertex: WebGLShader | null = null;
   private fragment: WebGLShader | null = null;
   private textures: Array<WebGLTexture | null> = [];
-  private closure: <T extends {readonly [s: string]: number} = {}>(map: IMethodsMap<T> & {thread: number}) => number = () =>
-    0;
   private shapes: {
     [s: string]: TensorMetadata;
   } = {};
@@ -569,6 +575,7 @@ export default class Compute {
   private result: TensorMetadata = {
     constructor: Float32Array,
     precision: "high",
+    // tslint:disable-next-line
     native: "float",
     typed: "float",
     shader: "float",
@@ -578,9 +585,8 @@ export default class Compute {
     width: 0,
     height: 0,
     strides: [],
-    shape: []
+    shape: [],
   };
-  public code = `return float(thread);`;
   public output(type: TypedArray | TypedArrayConstructor, ...shape: number[]) {
     this.result = Compute.tensor(type, shape);
     return this;
@@ -593,7 +599,9 @@ export default class Compute {
     this.shapes[name] = Compute.tensor(type, shape);
     return this;
   }
-  public fallback<T extends {readonly [s: string]: number} = {}>(closure: (map: IMethodsMap<T> & {thread: number}) => number) {
+  public fallback<T extends { readonly [s: string]: number } = {}>(
+    closure: (map: IMethodsMap<T> & { thread: number }) => number,
+  ) {
     // @ts-ignore
     this.closure = closure;
     return this;
@@ -606,7 +614,90 @@ export default class Compute {
     this.values = inputs;
     return this.compile();
   }
-  public compile() {
+  public run({
+    runtime = "fastest",
+    threshold = 4096,
+  }: {
+    runtime?: "gpu" | "cpu" | "fallback" | "fastest";
+    threshold?: number;
+  } = {}) {
+    if (runtime === "gpu") {
+      return this.gpu();
+    }
+    if (runtime === "cpu") {
+      return this.cpu();
+    }
+    if (runtime === "fallback") {
+      try {
+        return this.gpu();
+      } catch (e) {
+        return this.cpu();
+      }
+    }
+    const T = threshold || 4096;
+    let fastest: "cpu" | "gpu" = "cpu";
+    Object.keys(this.shapes).forEach((name) => {
+      const shape = this.shapes[name];
+      if (shape.length * shape.bytes > T) {
+        fastest = "gpu";
+      }
+    });
+    if (this.result.length * this.result.bytes > T) {
+      fastest = "gpu";
+    }
+    try {
+      return this[fastest]();
+    } catch (e) {
+      return this[fastest === "gpu" ? "cpu" : "gpu"]();
+    }
+  }
+  public gpu() {
+    const context = this.context;
+    const program = this.program;
+    const vertex = this.vertex;
+    const fragment = this.fragment;
+    if (context && program && vertex && fragment) {
+      Object.keys(this.shapes).forEach((name, i) => {
+        if (!this.values.hasOwnProperty(name)) {
+          return;
+        }
+        const texture = this.textures[i] as WebGLTexture;
+        uploadTexture(
+          // @ts-ignore
+          this.context,
+          texture,
+          this.values[name],
+          this.shapes[name],
+          i,
+        );
+      });
+      context.bufferData(
+        context.ARRAY_BUFFER,
+        new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]),
+        context.STATIC_DRAW,
+      );
+      context.drawArrays(context.TRIANGLES, 0, 6);
+      const pixels = readContext(context);
+      const converted = convertPixels(pixels, this.result);
+      return converted;
+    }
+    return new this.result.constructor(
+      this.result.shape.reduce((p, c) => p * c, 1),
+    );
+  }
+  public cpu() {
+    const threads = this.result.length;
+    const array = new this.result.constructor(threads);
+    return array.map((_, i) => {
+      let map: IMethodsMap<{ readonly [s: string]: number }> & { thread: number } = { thread: i };
+      Object.keys(this.shapes).forEach((name) => {
+        // @ts-ignore
+        map = { ...map, ...tensorMethods(name, this.values[name], this.shapes[name], i) };
+      });
+      return this.closure(map);
+    });
+  }
+  private compile() {
     const uniforms: string[] = [];
     const functions: string[] = [];
     const headers: string[] = [];
@@ -693,14 +784,13 @@ export default class Compute {
     }
     vec4 getColor(int thread) {
       ${type.shader} result = userCode(thread);
-      return ${
-        type.shader === "float"
-          ? `floatToRgba(result)`
-          : type.precision === "low"
+      return ${type.shader === "float"
+        ? `floatToRgba(result)`
+        : type.precision === "low"
           ? `lowIntToRgba(result)`
           : type.precision === "medium"
-          ? `mediumIntToRgba(result)`
-          : `highIntToRgba(result)`
+            ? `mediumIntToRgba(result)`
+            : `highIntToRgba(result)`
       };
     }
     ${functions.join(`
@@ -866,7 +956,7 @@ export default class Compute {
         this.program,
         name,
         this.shapes[name],
-        i
+        i,
       );
       if (this.textures[i] === null) {
         throw Error(`WebGL texture #${i} cannot be created`);
@@ -874,89 +964,10 @@ export default class Compute {
     });
     return this;
   }
-  public run({
-    runtime = "fastest",
-    threshold = 4096
-  }: {
-    runtime?: "gpu" | "cpu" | "fallback" | "fastest";
-    threshold?: number;
-  } = {}) {
-    if (runtime === "gpu") {
-      return this.gpu();
-    }
-    if (runtime === "cpu") {
-      return this.cpu();
-    }
-    if (runtime === "fallback") {
-      try {
-        return this.gpu();
-      } catch (e) {
-        return this.cpu();
-      }
-    }
-    const T = threshold || 4096;
-    let fastest: "cpu" | "gpu" = "cpu";
-    Object.keys(this.shapes).forEach((name) => {
-      const shape = this.shapes[name];
-      if (shape.length * shape.bytes > T) {
-        fastest = "gpu";
-      }
-    });
-    if (this.result.length * this.result.bytes > T) {
-      fastest = "gpu";
-    }
-    try {
-      return this[fastest]();
-    } catch (e) {
-      return this[fastest === "gpu" ? "cpu" : "gpu"]();
-    }
-  }
-  private gpu() {
-    const context = this.context;
-    const program = this.program;
-    const vertex = this.vertex;
-    const fragment = this.fragment;
-    if (context && program && vertex && fragment) {
-      Object.keys(this.shapes).forEach((name, i) => {
-        if (!this.values.hasOwnProperty(name)) {
-          return;
-        }
-        const texture = this.textures[i] as WebGLTexture;
-        uploadTexture(
-          // @ts-ignore
-          this.context,
-          texture,
-          this.values[name],
-          this.shapes[name],
-          i
-        );
-      });
-      context.bufferData(
-        context.ARRAY_BUFFER,
-        new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]),
-        context.STATIC_DRAW
-      );
-      context.drawArrays(context.TRIANGLES, 0, 6);
-      const pixels = readContext(context);
-      const converted = convertPixels(pixels, this.result);
-      return converted;
-    }
-    return new this.result.constructor(
-      this.result.shape.reduce((p, c) => p * c, 1)
-    );
-  }
-  private cpu() {
-    const threads = this.result.length;
-    const array = new this.result.constructor(threads);
-    return array.map((_, i) => {
-      let map: IMethodsMap<{readonly [s: string]: number}> & {thread: number} = {thread: i};
-      Object.keys(this.shapes).forEach((name) => {
-        // @ts-ignore
-        map = {...map, ...tensorMethods(name, this.values[name], this.shapes[name], i)};
-      });
-      return this.closure(map);
-    });
-  }
+  private closure: <T extends { readonly [s: string]: number } = {}>(
+    map: IMethodsMap<T> & { thread: number },
+    // tslint:disable-next-line
+  ) => number = () => 0;
   private parse(shader: string) {
     let syntax = shader;
     Object.keys(this.shapes).forEach((key) => {

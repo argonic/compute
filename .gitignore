@@ -3,3 +3,4 @@ node_modules/
 build/src/
 build/test/
 package-lock.json
+codecov

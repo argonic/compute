@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import Tensor from "../src/compute";
+import Compute from "../src/compute";
 
-describe("Tensor", () => {
+describe("Compute", () => {
 });

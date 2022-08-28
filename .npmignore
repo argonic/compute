@@ -2,10 +2,11 @@
 node_modules/
 coverage/
 build/test/
-build/src/
 test/
 tslint.json
 webpack.config.js
 webpack.config.dev.js
 webpack.config.prod.js
 .gitignore
+codecov
+.travis.yml

@@ -528,7 +528,7 @@ var Compute = (function () {
             syntax = syntax.replace(coordsIndexRegex, key + "CoordsToIndex");
             syntax = syntax.replace(coordsAccessRegex, key + "SampleCoords");
             syntax = syntax.replace(indexAccessRegex, key + "SampleIndex");
-            syntax = syntax.replace(coordsRegex, key + "IndexCoords(thread)");
+            syntax = syntax.replace(coordsRegex, key + "IndexToCoords(thread)");
             syntax = syntax.replace(valueRegex, key + "SampleIndex(thread)");
         });
         return syntax;

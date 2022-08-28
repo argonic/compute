@@ -2,7 +2,7 @@
   "compileOnSave": true,
   "compilerOptions": {
     "target": "es5",
-    "module": "AMD",
+    "module": "CommonJS",
     "outDir": "build",
     "declaration": true,
     "sourceMap": true,
@@ -11,8 +11,7 @@
     "strict": true,
     "pretty": false,
     "removeComments": true,
-    "noImplicitAny": false,
-    "outFile": "build/compute.js"
+    "noImplicitAny": false
   },
   "files": [
     "src/compute.ts"

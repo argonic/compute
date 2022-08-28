@@ -1,6 +1,6 @@
 {
   "name": "compute.js",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Accelerated lightweight tensor computation",
   "repository": {
     "type": "git",

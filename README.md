@@ -1,6 +1,6 @@
 # Compute.js
 
-[![Build Status](https://travis-ci.org/argonic/compute.svg?branch=master)](https://travis-ci.org/argonic/compute) [![codecov](https://codecov.io/gh/argonic/compute/branch/master/graph/badge.svg)](https://codecov.io/gh/argonic/compute)  [![npm (scoped)](https://img.shields.io/npm/v/@argonic/compute.svg)](https://www.npmjs.com/package/@argonic/compute)  ![DUB](https://img.shields.io/dub/l/vibe-d.svg)   [![Prettier code style](https://img.shields.io/badge/code%20style-prettier-ff69b4.svg)](https://github.com/argonic/compute) [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com) [![Github All Releases](https://img.shields.io/github/downloads/argonic/compute/total.svg)]() [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/dwyl/esta/issues)
+[![Build Status](https://travis-ci.org/argonic/compute.svg?branch=master)](https://travis-ci.org/argonic/compute) [![codecov](https://codecov.io/gh/argonic/compute/branch/master/graph/badge.svg)](https://codecov.io/gh/argonic/compute)  [![npm (scoped)](https://img.shields.io/npm/v/@argonic/compute.svg)](https://www.npmjs.com/package/compute.js)  ![DUB](https://img.shields.io/dub/l/vibe-d.svg)   [![Prettier code style](https://img.shields.io/badge/code%20style-prettier-ff69b4.svg)](https://github.com/argonic/compute) [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com) [![Github All Releases](https://img.shields.io/github/downloads/argonic/compute/total.svg)]() [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/dwyl/esta/issues)
 
 ### About the author
 Made with ❤️ by Zakaria Chabihi [![Build Status](https://img.shields.io/badge/patreon-%24-green)](https://www.patreon.com/argonic) [![Build Status](https://img.shields.io/badge/buy%20me%20coffee-%24-green)](https://www.buymeacoffee.com/argonic) 
@@ -111,7 +111,7 @@ const result = backend
     })
     .compute(`return float($input);`)
     .inputs({ input })
-    .run("cpu"); // would return a Float32Array with the same values from input
+    .run(); // would return a Float32Array with the same values from input
 ```
 
 ### Input interpolates

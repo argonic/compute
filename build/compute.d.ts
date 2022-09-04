@@ -47,7 +47,7 @@ export declare type Vector<C extends number> = C extends 1 ? {
     i2: number;
     i3: number;
 };
-declare type IMethodName<T extends string, A extends AccessType> = A extends "value" ? `$${T}` : A extends "coords" ? `$${T}_coords` : A extends "index_access" ? `$$${T}_index` : A extends "coords_access" ? `$$${T}_coords` : A extends "index_to_coords" ? `$$$${T}_coords` : A extends "coords_to_index" ? `$$$${T}_index` : never;
+declare type IMethodName<T extends string, A extends AccessType> = A extends "value" ? `$${T}` : A extends "coords" ? `$${T}__coords` : A extends "index_access" ? `$${T}__access_index` : A extends "coords_access" ? `$${T}__access_coords` : A extends "index_to_coords" ? `$${T}__index_coords` : A extends "coords_to_index" ? `$${T}__coords_index` : never;
 declare type IMethodValue<A extends AccessType, C extends number> = A extends "value" ? number : A extends "coords" ? Vector<C> : A extends "index_access" ? (index: number) => number : A extends "coords_access" ? (vector: Vector<C>) => number : A extends "index_to_coords" ? (vector: number) => Vector<C> : A extends "coords_to_index" ? (vector: Vector<C>) => number : never;
 declare type IMethods<T extends string = string, C extends number = number> = {
     [P in AccessType as IMethodName<T, P>]: IMethodValue<P, C>;
@@ -66,12 +66,16 @@ declare type IMethodsMap<T extends {
     [P in keyof T]: IMethods<P, T[P]>;
 }>;
 export declare function logShaderSourceAndInfoLog(shaderSource: string, shaderInfoLog: string): void;
+declare type IOutput = [type: TypedArray | TypedArrayConstructor] | [shape: number | number[]] | [type: TypedArray | TypedArrayConstructor, shape: number | number[]];
+declare type IInput = [name: string, type: TypedArray | TypedArrayConstructor] | [name: string, shape: number | number[]] | [name: string, type: TypedArray | TypedArrayConstructor, shape: number | number[]] | [name: string, shape: number | number[], type: TypedArray | TypedArrayConstructor];
 export default class Compute {
+    static Transpile(string: TemplateStringsArray): Compute;
+    static transpile(code: string): Compute;
     static tensor(type: TypedArray | TypedArrayConstructor, shape: number[]): {
         constructor: TypedArrayConstructor;
         typed: "float" | "int8" | "uint8" | "int16" | "uint16" | "int32" | "uint31";
         native: "float" | "int" | "uint";
-        precision: "high" | "low" | "medium";
+        precision: "low" | "medium" | "high";
         shader: "float" | "int";
         rank: number;
         bytes: number;
@@ -87,20 +91,19 @@ export default class Compute {
     private vertex;
     private fragment;
     private textures;
-    private shapes;
+    private functions;
+    private ranks;
     private values;
     private result;
-    output(type: TypedArray | TypedArrayConstructor, ...shape: number[]): this;
-    input(name: string, type: TypedArray | TypedArrayConstructor, ...shape: number[]): this;
+    function(name: string, result: string, code: string): this;
+    output(...args: IOutput): this;
+    input(...args: IInput): this;
     cpu<T extends {
         [s: string]: number;
     } = {}>(closure: (map: IMethodsMap<T> & {
         thread: number;
     }) => number): this;
     gpu(code: string): this;
-    inputs(inputs: {
-        [s: string]: TypedArray;
-    }): this;
     run({ runtime, threshold, safe, }?: {
         runtime?: "gpu" | "cpu" | "fallback" | "fastest";
         threshold?: number;

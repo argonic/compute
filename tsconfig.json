@@ -2,8 +2,9 @@
   "compileOnSave": true,
   "compilerOptions": {
     "target": "es5",
+    "lib": ["ES2019", "DOM"],
     "module": "CommonJS",
-    "outDir": "build",
+    "outDir": "cache",
     "declaration": true,
     "sourceMap": true,
     "allowJs": false,
@@ -11,10 +12,11 @@
     "strict": true,
     "pretty": false,
     "removeComments": true,
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "downlevelIteration": true
   },
-  "files": [
-    "src/compute.ts"
+  "include": [
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules"

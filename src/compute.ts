@@ -1,3 +1,4 @@
+import { IScript, parseCode, transpileWebGL, transpileFunction, transpilePrimitive, transpileNative } from "./transpile";
 export type TypedArray =
   | Int8Array
   | Int16Array
@@ -28,11 +29,11 @@ export type Vector<C extends number> = C extends 1 ? { x: number }
   : { x: number, y: number, z: number, w: number, i: number, i1: number, i2: number, i3: number };
 
 type IMethodName<T extends string, A extends AccessType> = A extends "value" ? `$${T}`
-  : A extends "coords" ? `$${T}_coords`
-  : A extends "index_access" ? `$$${T}_index`
-  : A extends "coords_access" ? `$$${T}_coords`
-  : A extends "index_to_coords" ? `$$$${T}_coords`
-  : A extends "coords_to_index" ? `$$$${T}_index`
+  : A extends "coords" ? `$${T}__coords`
+  : A extends "index_access" ? `$${T}__access_index`
+  : A extends "coords_access" ? `$${T}__access_coords`
+  : A extends "index_to_coords" ? `$${T}__index_coords`
+  : A extends "coords_to_index" ? `$${T}__coords_index`
   : never;
 
 type IMethodValue<A extends AccessType, C extends number> = A extends "value" ? number
@@ -165,10 +166,10 @@ function initializeContext() {
 function bindProgram(
   gl: WebGLRenderingContext,
   program: WebGLProgram,
-  output: TensorMetadata,
+  tensor: TensorMetadata,
 ) {
-  const width = (output.width * 4) / output.bytes;
-  const height = (output.height * 4) / output.bytes;
+  const width = (tensor.width * 4) / tensor.bytes;
+  const height = (tensor.height * 4) / tensor.bytes;
   const positionBuffer = gl.createBuffer();
   gl.canvas.width = width;
   gl.canvas.height = height;
@@ -226,28 +227,28 @@ function generateStructs(count: number) {
   });
   return structs;
 }
-function convertPixels(pixels: Uint8Array, type: TensorMetadata) {
-  if (type.constructor === Float32Array) {
+function convertPixels(pixels: Uint8Array, tensor: TensorMetadata) {
+  if (tensor.constructor === Float32Array) {
     return new Float32Array(pixels.buffer);
   }
-  if (type.constructor === Int8Array || type.constructor === Uint8Array) {
+  if (tensor.constructor === Int8Array || tensor.constructor === Uint8Array) {
     // @ts-ignore
-    return new type.constructor(type.length).map((value, i) => {
+    return new tensor.constructor(tensor.length).map((value, i) => {
       return pixels[i * 4 + 3];
     });
   }
-  if (type.constructor === Int16Array || type.constructor === Uint16Array) {
+  if (tensor.constructor === Int16Array || tensor.constructor === Uint16Array) {
     // @ts-ignore
-    return new type.constructor(type.length).map((value, i) => {
+    return new tensor.constructor(tensor.length).map((value, i) => {
       const a = pixels[i * 4 + 3];
       const b = pixels[i * 4 + 2];
       // tslint:disable-next-line
       return a + (b << 8);
     });
   }
-  if (type.constructor === Int32Array || type.constructor === Uint32Array) {
+  if (tensor.constructor === Int32Array || tensor.constructor === Uint32Array) {
     // @ts-ignore
-    return new type.constructor(type.length).map((value, i) => {
+    return new tensor.constructor(tensor.length).map((value, i) => {
       const a = pixels[i * 4 + 3];
       const b = pixels[i * 4 + 2];
       const g = pixels[i * 4 + 1];
@@ -256,19 +257,19 @@ function convertPixels(pixels: Uint8Array, type: TensorMetadata) {
       return a + (b << 8) + (g << 16) + (r << 16);
     });
   }
-  return new type.constructor(pixels.buffer);
+  return new tensor.constructor(pixels.buffer);
 }
-function initializeShape(
+function uploadShape(
   gl: WebGLRenderingContext,
   program: WebGLProgram,
   name: string,
-  output: TensorMetadata,
+  tensor: TensorMetadata,
 ) {
   const widthLocation = gl.getUniformLocation(program, `u_${name}_width`);
   const heightLocation = gl.getUniformLocation(program, `u_${name}_height`);
-  gl.uniform1i(widthLocation, output.width * output.bytes);
-  gl.uniform1i(heightLocation, output.height * output.bytes);
-  output.shape.forEach((v, i) => {
+  gl.uniform1i(widthLocation, tensor.width);
+  gl.uniform1i(heightLocation, tensor.height);
+  tensor.shape.forEach((v, i) => {
     const dimLocation = gl.getUniformLocation(
       program,
       `u_${name}_shape.${getCoord(i)}`,
@@ -278,17 +279,15 @@ function initializeShape(
       `u_${name}_strides.${getCoord(i)}`,
     );
     gl.uniform1i(dimLocation, v);
-    gl.uniform1i(strideLocation, output.strides[i]);
+    gl.uniform1i(strideLocation, tensor.strides[i]);
   });
 }
-function initializeTexture(
+function initializeTensor(
   gl: WebGLRenderingContext,
   program: WebGLProgram,
   name: string,
-  output: TensorMetadata,
   index: number,
 ) {
-  initializeShape(gl, program, name, output);
   const location = gl.getUniformLocation(program, `u_${name}`);
   gl.activeTexture(gl.TEXTURE0 + index);
   const texture = gl.createTexture();
@@ -304,8 +303,8 @@ function initializeTexture(
     gl.TEXTURE_2D,
     0,
     gl.RGBA,
-    output.width,
-    output.height,
+    1,
+    1,
     0,
     gl.RGBA,
     gl.UNSIGNED_BYTE,
@@ -314,14 +313,18 @@ function initializeTexture(
   gl.uniform1i(location, index);
   return texture;
 }
-function uploadTexture(
+function uploadTensor(
   gl: WebGLRenderingContext,
+  program: WebGLProgram,
   texture: WebGLTexture,
-  data: TypedArray,
-  output: TensorMetadata,
+  name: string,
   index: number,
+  data: TypedArray,
+  tensor: TensorMetadata,
 ) {
-  const length = output.width * output.height * 4;
+  console.log("tensor", tensor);
+  uploadShape(gl, program, name, tensor);
+  const length = tensor.width * tensor.height * 4;
   gl.activeTexture(gl.TEXTURE0 + index);
   gl.bindTexture(gl.TEXTURE_2D, texture);
   let d =
@@ -338,48 +341,54 @@ function uploadTexture(
     gl.TEXTURE_2D,
     0,
     gl.RGBA,
-    output.width,
-    output.height,
+    tensor.width,
+    tensor.height,
     0,
     gl.RGBA,
     gl.UNSIGNED_BYTE,
     d,
   );
 }
-function textureShader(name: string, output: TensorMetadata) {
+function tensorShader(
+  name: string,
+  constructor: TypedArrayConstructor,
+  rank: number,
+) {
+  // eslint-disable-next-line
+  const meta = Compute.tensor(constructor, [...Array(rank)].map(() => 1));
   const uniforms: string[] = [];
   const functions: string[] = [];
   uniforms.push(`uniform sampler2D u_${name}`);
   uniforms.push(`uniform int u_${name}_width`);
   uniforms.push(`uniform int u_${name}_height`);
-  uniforms.push(`uniform ivec${output.shape.length} u_${name}_shape`);
-  uniforms.push(`uniform ivec${output.shape.length} u_${name}_strides`);
+  uniforms.push(`uniform ivec${rank} u_${name}_shape`);
+  uniforms.push(`uniform ivec${rank} u_${name}_strides`);
   functions.push(`
-    ${output.shader} ${name}SampleIndex(int index) {
-      int d = ${output.bytes};
+    ${meta.shader} ${name}SampleIndex(int index) {
+      int d = ${meta.bytes};
       float p = 4.0 / float(d);
       int i = int(float(index) / p);
       int z = index - int(float(i) * p);
       vec4 color = colorIndex(index, u_${name}, d, u_${name}_width, u_${name}_height);
-      return ${output.shader === "float"
+      return ${meta.shader === "float"
       ? `rgbaToFloat(color)`
-      : output.precision === "high"
+      : meta.precision === "high"
         ? "rgbaToHighInt(color)"
-        : output.precision === "medium"
+        : meta.precision === "medium"
           ? "rgbaToMediumInt(color, z)"
           : `rgbaToLowInt(color, z)`
     };
     }`);
   functions.push(`
-    ${output.shader} ${name}SampleCoords(ivec${output.shape.length} coords) {
+    ${meta.shader} ${name}SampleCoords(ivec${rank} coords) {
       return ${name}SampleIndex(${name}CoordsToIndex(coords));
     }`);
   functions.push(`
-    int ${name}CoordsToIndex(ivec${output.shape.length} coords) {
+    int ${name}CoordsToIndex(ivec${rank} coords) {
       return coordsToIndex(coords, u_${name}_strides);
     }`);
   functions.push(`
-    ivec${output.shape.length} ${name}IndexToCoords(int index) {
+    ivec${rank} ${name}IndexToCoords(int index) {
       return indexToCoords(index, u_${name}_strides);
     }`);
   functions.push(`
@@ -396,33 +405,33 @@ function textureShader(name: string, output: TensorMetadata) {
       return color;
     }`);
   functions.push(`
-    vec4 colorCoords(ivec${output.shape.length} coords, ivec${output.shape.length} strides, sampler2D texture, int d, int width, int height) {
+    vec4 colorCoords(ivec${rank} coords, ivec${rank} strides, sampler2D texture, int d, int width, int height) {
       int index = coordsToIndex(coords, strides);
       return colorIndex(index, texture, d, width, height);
     }`);
   functions.push(`
-    int coordsToIndex(ivec${output.shape.length} coords, ivec${output.shape.length
+    int coordsToIndex(ivec${rank} coords, ivec${rank
     } strides) {
-      if (${output.shape.length} == 1) {
+      if (${rank} == 1) {
         return coords.${getCoord(0)};
       }
       int index = 0;
-      ${output.shape.map((_, i) => {
+      ${meta.shape.map((_, i) => {
       return `index += coords.${getCoord(i)} * strides.${getCoord(i)};`;
     }).join(`
       `)}
       return index;
     }`);
   functions.push(`
-    ivec${output.shape.length} indexToCoords(int index, ivec${output.shape.length
+    ivec${rank} indexToCoords(int index, ivec${rank
     } strides) {
-      ${output.shape.length === 1
-      ? `return ivec${output.shape.length}(index);`
-      : `ivec${output.shape.length} coords = ivec${output.shape.length
-      }(${output.shape.map(() => "0").join(", ")});
+      ${rank === 1
+      ? `return ivec${rank}(index);`
+      : `ivec${rank} coords = ivec${rank
+      }(${meta.shape.map(() => "0").join(", ")});
       int rest = index;
       int div = 0;
-      ${output.shape.map((_: number, i: number) => {
+      ${meta.shape.map((_: number, i: number) => {
         return `div = int(rest / strides.${getCoord(i)});
       rest -= div * strides.${getCoord(i)};
       coords.${getCoord(i)} = div;`;
@@ -465,19 +474,58 @@ function tensorMethods(name: string, value: TypedArray, tensor: TensorMetadata, 
   // @ts-ignore
   T["$" + name] = value[thread];
   // @ts-ignore
-  T["$" + name + "_coords"] = getCoords(tensor, thread);
+  T["$" + name + "__coords"] = getCoords(tensor, thread);
   // @ts-ignore
-  T["$$" + name + "_coords"] = (coords: Vector<number>) => value[getIndex(tensor, coords)];
+  T["$" + name + "__access_coords"] = (coords: Vector<number>) => value[getIndex(tensor, coords)];
   // @ts-ignore
-  T["$$" + name + "_index"] = (index: number) => value[index];
+  T["$" + name + "__access_index"] = (index: number) => value[index];
   // @ts-ignore
-  T["$$$" + name + "_coords"] = (index: number) => getCoords(tensor, index);
+  T["$" + name + "__index_coords"] = (index: number) => getCoords(tensor, index);
   // @ts-ignore
-  T["$$$" + name + "_index"] = (coords: Vector<number>) => getIndex(tensor, coords);
+  T["$" + name + "__coords_index"] = (coords: Vector<number>) => getIndex(tensor, coords);
   return T;
 }
-
+type IOutput = [type: TypedArray | TypedArrayConstructor]
+  | [shape: number | number[]]
+  | [type: TypedArray | TypedArrayConstructor, shape: number | number[]];
+type IInput = [name: string, type: TypedArray | TypedArrayConstructor]
+  | [name: string, shape: number | number[]]
+  | [name: string, type: TypedArray | TypedArrayConstructor, shape: number | number[]]
+  | [name: string, shape: number | number[], type: TypedArray | TypedArrayConstructor];
 export default class Compute {
+  public static Transpile(string: TemplateStringsArray) {
+    return this.transpile(string.raw[0]);
+  }
+  public static transpile(code: string) {
+    const compute = new Compute();
+    const script = parseCode(code);
+    script.inputs.forEach(({ name, native, dimensions }) => {
+      compute.input(name, transpileNative(native), dimensions);
+    });
+    compute.output(transpileNative(script.native), script.dimensions);
+    const functions: { [s: string]: ((...args: any[]) => any) } = {};
+    const F = script.functions.map((F) => F.value.name);
+    script.functions.forEach((definition) => {
+      const { value, values, declarations } = definition;
+      compute.function(
+        "__user_" + value.name,
+        transpilePrimitive(value.primitive),
+        transpileWebGL(definition, F),
+      );
+      const closure = transpileFunction(declarations, F);
+      functions[value.name] = (...args) => {
+        const map: { [s: string]: any } = {};
+        args.forEach((arg, i) => {
+          map[values[i].name] = arg;
+        });
+        return closure(map, functions);
+      };
+    });
+    const cpu = transpileFunction(script.declarations, F);
+    compute.cpu((map) => cpu(map, functions));
+    compute.gpu(transpileWebGL(script.declarations, F));
+    return compute;
+  }
   public static tensor(
     type: TypedArray | TypedArrayConstructor,
     shape: number[],
@@ -566,11 +614,23 @@ export default class Compute {
   private vertex: WebGLShader | null = null;
   private fragment: WebGLShader | null = null;
   private textures: Array<WebGLTexture | null> = [];
-  private shapes: {
-    [s: string]: TensorMetadata;
+  private functions: {
+    [s: string]: {
+      result: string;
+      code: string;
+    }
+  } = {};
+  private ranks: {
+    [s: string]: {
+      constructor: TypedArrayConstructor;
+      rank: number;
+    };
   } = {};
   private values: {
-    [s: string]: TypedArray;
+    [s: string]: {
+      data: TypedArray;
+      shape: number[];
+    };
   } = {};
   private result: TensorMetadata = {
     constructor: Float32Array,
@@ -587,16 +647,65 @@ export default class Compute {
     strides: [],
     shape: [],
   };
-  public output(type: TypedArray | TypedArrayConstructor, ...shape: number[]) {
-    this.result = Compute.tensor(type, shape);
+  public function(name: string, result: string, code: string) {
+    this.functions[name] = { result, code };
     return this;
   }
-  public input(
-    name: string,
-    type: TypedArray | TypedArrayConstructor,
-    ...shape: number[]
-  ) {
-    this.shapes[name] = Compute.tensor(type, shape);
+  public output(...args: IOutput) {
+    let type = this.result.constructor as TypedArray | TypedArrayConstructor;
+    let shape = this.result.shape as number | number[];
+    const [first, last] = args;
+    if (args.length === 2) {
+      // @ts-ignore
+      type = first;
+      // @ts-ignore
+      shape = last;
+    } else {
+      if (ArrayBuffer.isView(first) || (typeof first === "function")) {
+        // @ts-ignore
+        type = first;
+      } else {
+        // @ts-ignore
+        shape = first;
+      }
+    }
+    this.result = Compute.tensor(type, Array.isArray(shape) ? shape : [...Array(shape)].map(() => 1))
+    return this;
+  }
+  public input(...args: IInput) {
+    let type = this.result.constructor as TypedArray | TypedArrayConstructor;
+    let shape = this.result.shape as number | number[];
+    const [name, first, last] = args;
+    if (args.length === 3) {
+      if (ArrayBuffer.isView(first) || (typeof first === "function")) {
+        // @ts-ignore
+        type = first;
+        // @ts-ignore
+        shape = last;
+      } else {
+        // @ts-ignore
+        shape = first;
+        // @ts-ignore
+        type = last;
+      }
+    } else {
+      if (ArrayBuffer.isView(first) || (typeof first === "function")) {
+        // @ts-ignore
+        type = first;
+      } else {
+        // @ts-ignore
+        shape = first;
+      }
+    }
+    const tensor = Compute.tensor(type, Array.isArray(shape) ? shape : [...Array(shape)].map(() => 1));
+    const rank = typeof shape === "number" ? shape : shape.length;
+    this.ranks[name] = {
+      constructor: tensor.constructor,
+      rank,
+    };
+    if (typeof type === "object") {
+      this.values[name] = { data: type, shape: tensor.shape };
+    }
     return this;
   }
   public cpu<T extends { [s: string]: number } = {}>(
@@ -608,11 +717,11 @@ export default class Compute {
   }
   public gpu(code: string) {
     this.code = this.parse(code);
-    return this;
-  }
-  public inputs(inputs: { [s: string]: TypedArray }) {
-    this.values = inputs;
-    return this.compile();
+    try {
+      return this.compile();
+    } catch (e) {
+      return this;
+    }
   }
   public run({
     runtime = "fastest",
@@ -637,21 +746,23 @@ export default class Compute {
           return this.run_cpu();
         }
       }
-      const T = threshold || 4096;
+      const T = threshold || 10;
       let fastest: "cpu" | "gpu" = "cpu";
-      Object.keys(this.shapes).forEach((name) => {
-        const shape = this.shapes[name];
-        if (shape.length * shape.bytes > T) {
+      Object.keys(this.values).forEach((name) => {
+        const { data, shape } = this.values[name];
+        const tensor = Compute.tensor(data, shape);
+        if (tensor.length * tensor.bytes > T) {
           fastest = "gpu";
         }
       });
       if (this.result.length * this.result.bytes > T) {
         fastest = "gpu";
       }
+      const func = ("run_" + fastest) as "run_gpu" | "run_cpu";
       try {
-        return this["run_" + fastest]();
+        return this[func]();
       } catch (e) {
-        return this["run_" + (fastest === "gpu" ? "cpu" : "gpu")]();
+        return this[("run_" + (fastest === "gpu" ? "cpu" : "gpu")) as typeof func]();
       }
     } catch (e) {
       if (safe !== false) {
@@ -661,23 +772,27 @@ export default class Compute {
     }
   }
   private run_gpu() {
-    const context = this.context;
-    const program = this.program;
-    const vertex = this.vertex;
-    const fragment = this.fragment;
+    const context = this.context as WebGLRenderingContext;
+    const program = this.program as WebGLProgram;
+    const vertex = this.vertex as WebGLShader;
+    const fragment = this.fragment as WebGLShader;
     if (context && program && vertex && fragment) {
-      Object.keys(this.shapes).forEach((name, i) => {
+      bindProgram(context, program, this.result);
+      Object.keys(this.ranks).forEach((name, index) => {
         if (!this.values.hasOwnProperty(name)) {
           return;
         }
-        const texture = this.textures[i] as WebGLTexture;
-        uploadTexture(
-          // @ts-ignore
-          this.context,
+        const { data, shape } = this.values[name];
+        const tensor = Compute.tensor(data, shape);
+        const texture = this.textures[index] as WebGLTexture;
+        uploadTensor(
+          context,
+          program,
           texture,
-          this.values[name],
-          this.shapes[name],
-          i,
+          name,
+          index,
+          data,
+          tensor,
         );
       });
       context.bufferData(
@@ -699,9 +814,11 @@ export default class Compute {
     const array = new this.result.constructor(threads);
     return array.map((_, i) => {
       let map: IMethodsMap<{ [s: string]: number }> & { thread: number } = { thread: i };
-      Object.keys(this.shapes).forEach((name) => {
+      Object.keys(this.ranks).forEach((name, index) => {
+        const { data, shape } = this.values[name];
+        const tensor = Compute.tensor(data, shape);
         // @ts-ignore
-        map = { ...map, ...tensorMethods(name, this.values[name], this.shapes[name], i) };
+        map = { ...map, ...tensorMethods(name, data, tensor, i) };
       });
       return this.closure(map);
     });
@@ -711,8 +828,9 @@ export default class Compute {
     const functions: string[] = [];
     const headers: string[] = [];
     const structs: string[] = generateStructs(6);
-    Object.keys(this.values).forEach((name, i) => {
-      const result = textureShader(name, this.shapes[name]);
+    Object.keys(this.ranks).forEach((name, i) => {
+      const { constructor, rank } = this.ranks[name];
+      const result = tensorShader(name, constructor, rank);
       result.uniforms.forEach((u) => {
         const uu = u.trim();
         if (!uniforms.includes(uu)) {
@@ -756,6 +874,13 @@ export default class Compute {
     vec4 getColor(int thread);
     ${headers.join(`;
     `)};
+    ${Object.keys(this.functions).map((name) => {
+      const ff = this.functions[name].code.trim();
+      const first = ff.substring(0, ff.indexOf("\n"));
+      const h = first.slice(0, -2);
+      return this.functions[name].result + " " + h;
+    }).join(`;
+    `)}${Object.keys(this.functions).length !== 0 ? ";" : ""}
     vec4 lowIntToRgba(int result);
     vec4 mediumIntToRgba(int result);
     vec4 highIntToRgba(int result);
@@ -774,6 +899,7 @@ export default class Compute {
     float bitsToFloat(bool bits[32]);
     float rgbaToFloat(vec4 texelRGBA);
     int imod(int x, int y);
+    int mod(int x, int y);
     int idiv(int a, int b, float sign);
 
     void main() {
@@ -787,6 +913,10 @@ export default class Compute {
       float normalized_thread = thread / (255.0 * size);
       gl_FragColor = getColor(int(thread));
     }
+    ${Object.keys(this.functions).map((name) => {
+      return this.functions[name].result + " " + name + this.functions[name].code;
+    }).join(`
+    `)}
 
     ${type.shader} userCode(int thread) {
       ${this.code}
@@ -931,6 +1061,9 @@ export default class Compute {
     int imod(int x, int y) {
       return x - y * (x / y);
     }
+    int mod(int x, int y) {
+      return imod(x, y);
+    }
     int idiv(int a, int b, float sign) {
       int res = a / b;
       int mod = imod(a, b);
@@ -956,19 +1089,18 @@ export default class Compute {
     if (this.program === null) {
       throw Error("WebGL program cannot be created");
     }
+    const context = this.context as WebGLRenderingContext;
+    const program = this.program as WebGLProgram;
     bindProgram(this.context, this.program, this.result);
-    Object.keys(this.shapes).forEach((name, i) => {
-      this.textures[i] = initializeTexture(
-        // @ts-ignore
-        this.context,
-        // @ts-ignore
-        this.program,
+    Object.keys(this.ranks).forEach((name, index) => {
+      this.textures[index] = initializeTensor(
+        context,
+        program,
         name,
-        this.shapes[name],
-        i,
+        index,
       );
-      if (this.textures[i] === null) {
-        throw Error(`WebGL texture #${i} cannot be created`);
+      if (this.textures[index] === null) {
+        throw Error(`WebGL texture #${index} cannot be created`);
       }
     });
     return this;
@@ -979,13 +1111,13 @@ export default class Compute {
   ) => number = () => 0;
   private parse(shader: string) {
     let syntax = shader;
-    Object.keys(this.shapes).forEach((key) => {
+    Object.keys(this.ranks).forEach((key) => {
       const valueRegex = new RegExp("(\\$" + key + ")", "g");
-      const coordsRegex = new RegExp("(\\$" + key + "_coords)", "g");
-      const indexAccessRegex = new RegExp("(\\$\\$" + key + "_index)", "g");
-      const coordsAccessRegex = new RegExp("(\\$\\$" + key + "_coords)", "g");
-      const indexCoordsRegex = new RegExp("(\\$\\$\\$" + key + "_coords)", "g");
-      const coordsIndexRegex = new RegExp("(\\$\\$\\$" + key + "_index)", "g");
+      const coordsRegex = new RegExp("(\\$" + key + "__coords)", "g");
+      const indexAccessRegex = new RegExp("(\\$" + key + "__access_index)", "g");
+      const coordsAccessRegex = new RegExp("(\\$" + key + "__access_coords)", "g");
+      const indexCoordsRegex = new RegExp("(\\$" + key + "__index_coords)", "g");
+      const coordsIndexRegex = new RegExp("(\\$" + key + "__coords_index)", "g");
 
       syntax = syntax.replace(indexCoordsRegex, `${key}IndexToCoords`);
       syntax = syntax.replace(coordsIndexRegex, `${key}CoordsToIndex`);
@@ -997,5 +1129,4 @@ export default class Compute {
     return syntax;
   }
 }
-
 export type TensorMetadata = ReturnType<typeof Compute["tensor"]>;

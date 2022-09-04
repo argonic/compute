@@ -1,5 +1,7 @@
 .nyc_output/
+.vscode/
 node_modules/
-build/test/
+cache/
+build/
 package-lock.json
 codecov

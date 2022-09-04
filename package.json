@@ -1,6 +1,6 @@
 {
   "name": "compute.js",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "description": "Accelerated lightweight tensor computation",
   "repository": {
     "type": "git",
@@ -11,28 +11,28 @@
   "author": "Zakaria Chabihi <z.chabihi@gmail.com>",
   "license": "MIT",
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^22.0.2",
+    "@rollup/plugin-node-resolve": "^13.3.0",
+    "@rollup/plugin-typescript": "^8.4.0",
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.5",
     "chai": "^4.2.0",
-    "expose-loader": "^0.7.5",
-    "git-prepush-hook": "^1.0.2",
     "istanbul": "^0.4.5",
     "mocha": "^5.2.0",
     "nyc": "^13.1.0",
+    "rollup": "^2.79.0",
+    "rollup-plugin-dts": "^4.2.2",
     "source-map-support": "^0.5.9",
-    "ts-loader": "4.0.1",
-    "ts-node": "^7.0.1",
     "tslint": "^5.11.0",
     "typescript": "^4.4.4",
     "typescript-eslint-parser": "^21.0.2",
-    "typings": "^2.1.1",
-    "webpack": "4.1.1",
-    "webpack-cli": "2.0.11"
+    "typings": "^2.1.1"
   },
   "scripts": {
     "lint": "tslint ./src/**/*.ts",
+    "rollup": "rollup --config",
     "build:dev": "webpack --config ./webpack.config.dev.js",
-    "build:release": "node_modules/typescript/bin/tsc",
+    "build:release": "tsc && rollup --config",
     "test": "mocha -r ts-node/register ./test/**/*.test.ts",
     "test:watch": "mocha -r ts-node/register ./test/**/*.test.ts --watch",
     "test:coverage:release": "./node_modules/nyc/bin/nyc.js check-coverage --lines 90 --functions 90 --branches 90 --require ts-node/register --require source-map-support/register --recursive npm test",
@@ -56,9 +56,6 @@
     "ML",
     "typescript",
     "javascript"
-  ],
-  "pre-push": [
-    "release"
   ],
   "nyc": {
     "include": [

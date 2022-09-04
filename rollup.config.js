@@ -1,12 +1,10 @@
 import typescript from "@rollup/plugin-typescript";
-import dts from "rollup-plugin-dts";
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 
-
 const config = [
   {
-    input: "cache",
+    input: "cache/compute.js",
     output: {
       file: "build/compute.js",
       format: "cjs",

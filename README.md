@@ -186,7 +186,7 @@ f32(3) (f32(3) left, right i8[5,2,3]) {
     i8 acc = 0;
     f32 l = $left;
     vec3<i8> r = $right.coords;
-    vec3<i8> r_s = r + ivec3(1)
+    vec3<i8> r_s = r + ivec3(1);
     i8 r_v = $right.access_coords(r_s);
     for (i8 a=0; a < 10; a++) {
         if (a % 3 == 0) {
